@@ -1,2 +1,5 @@
 # Mongo-Neo4j-Flask
-AI School
+
+
+# Class AI School Project On MongoDB & Neo4j with Flask 
+ 
