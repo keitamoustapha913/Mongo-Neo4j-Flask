@@ -4,11 +4,8 @@ from datetime import datetime
 import os
 import uuid
 
-url = os.environ.get('GRAPHENEDB_URL', 'http://localhost:7687')
-username = os.environ.get('NEO4J_USERNAME')
-password = os.environ.get('NEO4J_PASSWORD')
 
-graph = Graph("bolt://localhost:7687", user="neo4j", password="mynewpass2")
+graph = Graph("bolt://localhost:7687", user="keitaneo4j", password="keitaneo4j")
 
 class User:
     def __init__(self, username,email,sex):
