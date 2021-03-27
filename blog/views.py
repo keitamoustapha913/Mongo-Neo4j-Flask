@@ -83,6 +83,10 @@ def like_post(post_id):
 @app.route('/profile/<username>')
 def profile(username):
     logged_in_username = session.get('username')
+    logged_in_email = session.get('email')
+    logged_in_sex = session.get('sex')
+
+
     user_being_viewed_username = username
 
     user_being_viewed = User(user_being_viewed_username,"","")
@@ -92,7 +96,7 @@ def profile(username):
     common = []
 
     if logged_in_username:
-        logged_in_user = User(logged_in_username)
+        logged_in_user =  User(logged_in_username,"","")
 
         if logged_in_user.username == user_being_viewed.username:
             similar = logged_in_user.get_similar_users()

@@ -8,7 +8,7 @@ import uuid
 graph = Graph("bolt://localhost:7687", user="keitaneo4j", password="keitaneo4j")
 
 class User:
-    def __init__(self, username,email,sex):
+    def __init__(self, username = None , email =None, sex = None):
         self.username = username
         self.email=email
         self.sex=sex
@@ -56,13 +56,14 @@ class User:
 
     def like_post(self, post_id):
         user = self.find()
-        post = graph.find_one('Post', 'id', post_id)
+        matcher = NodeMatcher(graph)
+        post = matcher.match("Post", id=post_id).first()
         graph.merge(Relationship(user, 'LIKED', post))
 
     def get_recent_posts(self):
         query = '''
         MATCH (user:User)-[:PUBLISHED]->(post:Post)<-[:TAGGED]-(tag:Tag)
-        WHERE user.username = {username}
+        WHERE user.username = $username
         RETURN post, COLLECT(tag.name) AS tags
         ORDER BY post.timestamp DESC LIMIT 5
         '''
@@ -75,7 +76,7 @@ class User:
         query = '''
         MATCH (you:User)-[:PUBLISHED]->(:Post)<-[:TAGGED]-(tag:Tag),
               (they:User)-[:PUBLISHED]->(:Post)<-[:TAGGED]-(tag)
-        WHERE you.username = {username} AND you <> they
+        WHERE you.username = $username AND you <> they
         WITH they, COLLECT(DISTINCT tag.name) AS tags
         ORDER BY SIZE(tags) DESC LIMIT 3
         RETURN they.username AS similar_user, tags
@@ -87,8 +88,8 @@ class User:
         # Find how many of the logged-in user's posts the other user
         # has liked and which tags they've both blogged about.
         query = '''
-        MATCH (they:User {username: {they} })
-        MATCH (you:User {username: {you} })
+        MATCH (they:User {username: $they })
+        MATCH (you:User {username: $you })
         OPTIONAL MATCH (they)-[:PUBLISHED]->(:Post)<-[:TAGGED]-(tag:Tag),
                        (you)-[:PUBLISHED]->(:Post)<-[:TAGGED]-(tag)
         RETURN SIZE((they)-[:LIKED]->(:Post)<-[:PUBLISHED]-(you)) AS likes,
