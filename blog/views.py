@@ -1,4 +1,5 @@
-from .models import User, get_todays_recent_posts
+
+from .modele import User, get_todays_recent_posts
 from flask import Flask, request, session, redirect, url_for, render_template, flash
 
 app = Flask(__name__)
@@ -13,17 +14,18 @@ def register():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-
+        email = request.form['email']
+        sex = request.form['sex']
         if len(username) < 1:
             flash('Your username must be at least one character.')
         elif len(password) < 5:
             flash('Your password must be at least 5 characters.')
-        elif not User(username).register(password):
+        elif not User(username,email,sex).register(password,email,sex):
             flash('A user with that username already exists.')
         else:
             session['username'] = username
             flash('Logged in.')
-            return redirect(url_for('index'))
+            return redirect(url_for('login'))
 
     return render_template('register.html')
 
@@ -33,7 +35,7 @@ def login():
         username = request.form['username']
         password = request.form['password']
 
-        if not User(username).verify_password(password):
+        if not User(username,"","").verify_password(password):
             flash('Invalid login.')
         else:
             session['username'] = username
@@ -61,7 +63,7 @@ def add_post():
     elif not text:
         flash('You must give your post a text body.')
     else:
-        User(session['username']).add_post(title, tags, text)
+        User(session['username'],"","").add_post(title, tags, text)
 
     return redirect(url_for('index'))
 
@@ -83,7 +85,7 @@ def profile(username):
     logged_in_username = session.get('username')
     user_being_viewed_username = username
 
-    user_being_viewed = User(user_being_viewed_username)
+    user_being_viewed = User(user_being_viewed_username,"","")
     posts = user_being_viewed.get_recent_posts()
 
     similar = []

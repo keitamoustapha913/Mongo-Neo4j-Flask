@@ -7,6 +7,15 @@
             <dd><input type="text" name="username"></dd>
             <dt>Password:</dt>
             <dd><input type="password" name="password"></dd>
+            <dt>Email:</dt>
+            <dd><input type="text" name="email" pattern=".+@gmail.com" required></dd>
+            <dt>Sexe</dt>
+            <dd>
+                <input type="radio" id="homme" name="sex" value="M" checked>
+                <label for="homme">Masculin</label>
+                 <input type="radio" id="femme" name="sex" value="F">
+                <label for="femme">Feminin</label>
+            </dd>
         </dl>
         <input type="submit" value="Register">
 	</form>
