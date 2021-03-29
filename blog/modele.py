@@ -46,14 +46,17 @@ class User:
         self.username = username
         self.email=email
         self.sex=sex
-        self.mongo_collection = mongo.create_collection(database_name = "mongo_blog" , collection_name = "User_blog")
+        self.user_collection = mongo.create_collection(database_name = "mongo_blog" , collection_name = "User_blog")
+        self.post_collection = mongo.create_collection(database_name = "mongo_blog" , collection_name = "Post_blog")
+        self.tag_collection = mongo.create_collection(database_name = "mongo_blog" , collection_name = "Tag_blog")
+        self.like_collection = mongo.create_collection(database_name = "mongo_blog" , collection_name = "Like_blog")
 
     def find(self):
         matcher = NodeMatcher(graph)
         user = matcher.match("User", username=self.username).first()
 
         mongo_filter = {'username' : self.username }
-        mongo_user = self.mongo_collection.find_one( mongo_filter )
+        mongo_user = self.user_collection.find_one( mongo_filter )
         print(f"\n\n Mongo find user : { mongo_user } ")
 
         return user
@@ -63,8 +66,8 @@ class User:
             user = Node('User', username=self.username, password=bcrypt.encrypt(password), email=self.email, sex=self.sex)
             graph.create(user)
 
-            input_dict = {'username' : self.username , 'password' : bcrypt.encrypt(password) , 'email' : self.email , "sex" : self.sex }
-            self.mongo_collection.insert_one( input_dict )
+            input_dict = {'username' : self.username , 'password' : bcrypt.encrypt(password) , 'email' : self.email , "sex" : self.sex, "Post":[] }
+            self.user_collection.insert_one( input_dict )
 
             return True
         else:
@@ -74,7 +77,7 @@ class User:
         user = self.find()
         if user:
             mongo_filter = {'username' : self.username }
-            mongo_user = self.mongo_collection.find_one( mongo_filter )
+            mongo_user = self.user_collection.find_one( mongo_filter )
             print(f"\n\n Mongo verify_password : { bcrypt.verify(password, mongo_user['password']) } ")
 
             return bcrypt.verify(password, user['password'])
@@ -94,20 +97,41 @@ class User:
         rel = Relationship(user, 'PUBLISHED', post)
         graph.create(rel)
 
-        new_post = { 'Post.id' : str(uuid.uuid4()) , 'Post.title': title, 'Post.tags': tags, 'Post.text': text , 'Post.timestamp': timestamp(), 'Post.date': date()}
-        updated_user = {"$set": new_post  }
-
         mongo_filter = {'username' : self.username }
-        mongo_user = self.mongo_collection.update_one( mongo_filter, updated_user)
+        mongo_user = self.user_collection.find_one( mongo_filter )
 
+        insert_post = { '_id' : str(uuid.uuid4()) ,"User_blog":mongo_user["_id"] , 'title': title, 'text': text , 'timestamp': timestamp(), 'date': date()}
 
+        self.post_collection.insert_one( insert_post)
+
+        
+        
         tags = [x.strip() for x in tags.lower().split(',')]
         for tag in set(tags):
+             
+            tag_filter = {'name' : tag }
+            if self.tag_collection.find_one( tag_filter ) is not None:
+                updated_tag = {"$push":{"User_blog":{"$each": [mongo_user["_id"]]}}}
+
+                user_filter = { "User_blog": { "$all": [mongo_user["_id"]] } }
+                found_user = self.tag_collection.find_one( user_filter )
+                print(f"found user id tag: {found_user}")
+                
+                if found_user is None:
+                    self.tag_collection.update_one( tag_filter, updated_tag)
+
+            else:
+                insert_tag = { '_id' :str(uuid.uuid4()) , "name":tag ,"User_blog":[mongo_user["_id"]]  }
+                self.tag_collection.insert_one( insert_tag )
+
+
+
             tag = Node('Tag', name=tag)
             graph.merge(tag,"Tag", "name")
 
             rel = Relationship(tag, 'TAGGED', post)
             graph.create(rel)
+
 
     def like_post(self, post_id):
         user = self.find()
