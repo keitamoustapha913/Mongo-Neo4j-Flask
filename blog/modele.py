@@ -9,8 +9,8 @@ import pymongo as pm
 # Connect to Mongo database
 #mongo_local = pm.MongoClient('localhost', 27017)
 #print(f"\n\n List of mongo databases : {mongo_local.list_database_names()}\n\n")
-
-
+#mongodb+srv://BelkacemBerbache:Kamax5477@cluster0.fmtsc.mongodb.net/myFirstDatabase?retryWrites=true&w=majority
+########################### Class MongoDb ###############################
 class MongoDb:
     def __init__(self, pymongo = None, uri= 'localhost', port = 27017):
         self.port = port
@@ -31,15 +31,15 @@ class MongoDb:
     def create_collection(self, database_name = "" ,collection_name = ""):
         if not self.create_database(database_name =database_name):
             self.database = create_database( database_name = database_name)
-        
+
         ## creating a collection
         self.collection = self.database[collection_name]
         return self.collection
 
 mongo = MongoDb(pymongo = pm, uri= 'localhost', port = 27017)
 
-
-graph = Graph("bolt://localhost:7687", user="keitaneo4j", password="keitaneo4j")
+#################### Flask Blog - Class User - Neo4j ##########################
+graph = Graph("bolt://localhost:7687", user="Neo4_Flask_Blog", password="neo4flask")
 
 class User:
     def __init__(self, username = None , email =None, sex = None):
@@ -104,21 +104,21 @@ class User:
 
         self.post_collection.insert_one( insert_post)
 
-        
-        
+
+
         tags = [x.strip() for x in tags.lower().split(',')]
         for tag in set(tags):
-             
+
             tag_filter = {'name' : tag }
             if self.tag_collection.find_one( tag_filter ) is not None:
-                updated_tag = {"$push":{"User_blog":{"$each": [mongo_user["_id"]]}}}
+                updated_tag = {"$addToSet":{"User_blog": mongo_user["_id"]}}
 
-                user_filter = { "User_blog": { "$all": [mongo_user["_id"]] } }
-                found_user = self.tag_collection.find_one( user_filter )
-                print(f"found user id tag: {found_user}")
-                
-                if found_user is None:
-                    self.tag_collection.update_one( tag_filter, updated_tag)
+                #user_filter = { "User_blog": { "$all": [mongo_user["_id"]] } }
+                #found_user = self.tag_collection.find_one( user_filter )
+                #print(f"found user id tag: {found_user}")
+
+                #if found_user is None:
+                self.tag_collection.update( tag_filter, updated_tag)
 
             else:
                 insert_tag = { '_id' :str(uuid.uuid4()) , "name":tag ,"User_blog":[mongo_user["_id"]]  }
@@ -135,9 +135,12 @@ class User:
 
     def like_post(self, post_id):
         user = self.find()
+        like_filter = {'User_blog' : user["_id"], 'Post_blog' : post_id }
         matcher = NodeMatcher(graph)
         post = matcher.match("Post", id=post_id).first()
         graph.merge(Relationship(user, 'LIKED', post))
+        self.like_collection.insert_one(like_filter)
+
 
     def get_recent_posts(self):
         query = '''
@@ -195,5 +198,3 @@ def timestamp():
 
 def date():
     return datetime.now().strftime('%Y-%m-%d')
-
-
