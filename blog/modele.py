@@ -9,8 +9,8 @@ import pymongo as pm
 # Connect to Mongo database
 #mongo_local = pm.MongoClient('localhost', 27017)
 #print(f"\n\n List of mongo databases : {mongo_local.list_database_names()}\n\n")
-
-
+#mongodb+srv://BelkacemBerbache:Kamax5477@cluster0.fmtsc.mongodb.net/myFirstDatabase?retryWrites=true&w=majority
+########################### Class MongoDb ###############################
 class MongoDb:
     def __init__(self, pymongo = None, uri= 'localhost', port = 27017):
         self.port = port
@@ -31,15 +31,15 @@ class MongoDb:
     def create_collection(self, database_name = "" ,collection_name = ""):
         if not self.create_database(database_name =database_name):
             self.database = create_database( database_name = database_name)
-        
+
         ## creating a collection
         self.collection = self.database[collection_name]
         return self.collection
 
 mongo = MongoDb(pymongo = pm, uri= 'localhost', port = 27017)
 
-
-graph = Graph("bolt://localhost:7687", user="keitaneo4j", password="keitaneo4j")
+#################### Flask Blog - Class User - Neo4j ##########################
+graph = Graph("bolt://localhost:7687", user="Neo4_Flask_Blog", password="neo4flask")
 
 class User:
     def __init__(self, username = None , email =None, sex = None):
@@ -102,8 +102,8 @@ class User:
 
         
 
-        
-        
+
+
         tags = [x.strip() for x in tags.lower().split(',')]
         post_id = str(uuid.uuid4())
         insert_post = { '_id' : post_id ,"User_blog":mongo_user["_id"] , 'title': title, 'text': text , 'timestamp': timestamp(), 'date': date(), "tags":tags}
@@ -175,6 +175,8 @@ class User:
         matcher = NodeMatcher(graph)
         post = matcher.match("Post", id=post_id).first()
         graph.merge(Relationship(user, 'LIKED', post))
+        self.like_collection.insert_one(like_filter)
+
 
         if self.like_collection.find_one( like_filter ) is not None:
             like_update = {"$addToSet":{"User_blog": mongo_user["_id"]}}
@@ -244,5 +246,3 @@ def timestamp():
 
 def date():
     return datetime.now().strftime('%Y-%m-%d')
-
-
