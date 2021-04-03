@@ -39,7 +39,8 @@ class MongoDb:
 mongo = MongoDb(pymongo = pm, uri= 'localhost', port = 27017)
 
 #################### Flask Blog - Class User - Neo4j ##########################
-graph = Graph("bolt://localhost:7687", user="Neo4_Flask_Blog", password="neo4flask")
+graph = Graph("bolt://localhost:7687", user="keitaneo4j", password="keitaneo4j")
+
 
 class User:
     def __init__(self, username = None , email =None, sex = None):
@@ -86,9 +87,10 @@ class User:
 
     def add_post(self, title, tags, text):
         user = self.find()
+        post_id = str(uuid.uuid4())
         post = Node(
             'Post',
-            id=str(uuid.uuid4()),
+            id= post_id ,
             title=title,
             text=text,
             timestamp=timestamp(),
@@ -105,30 +107,12 @@ class User:
 
 
         tags = [x.strip() for x in tags.lower().split(',')]
-        post_id = str(uuid.uuid4())
-        insert_post = { '_id' : post_id ,"User_blog":mongo_user["_id"] , 'title': title, 'text': text , 'timestamp': timestamp(), 'date': date(), "tags":tags}
+        
+        insert_post = { '_id' : post_id ,"User_blog":mongo_user["_id"] , 'title': title, 'text': text , 'timestamp': timestamp(), 'date': date(), "tags":tags, "likes":[]}
 
         self.post_collection.insert_one( insert_post)
 
-        post_filter= {"User_blog" : mongo_user["_id"]}
-        mongo_post = self.post_collection.find( post_filter )
-        user_tags_distinct = mongo_post.distinct("tags")
-        print(f"Found tags : {user_tags_distinct}")
-        users_tagged = []
-        tags_dict = {}
-        for user_tag in user_tags_distinct:
-
-            tag_filter = { "tags": user_tag }
-            mongo_tags = self.post_collection.find( tag_filter )
-            distinct_users = mongo_tags.distinct( "User_blog" )
-            user_name_list = []
-            for distinct_user in distinct_users:
-                user = self.user_collection.find_one( {"_id": distinct_user} )
-                if (user is not None) and (user["username"] != self.username):
-                    user_name_list.append( user["username"] )
-            tags_dict[user_tag] = user_name_list
-        
-        print( f"\nall users dict : {tags_dict } \n")
+       
 
         #print( f"all users : {users_tagged } \n")
         #print( f"\nall users dict : {tags_dict } \n")
@@ -161,22 +145,26 @@ class User:
 
     def like_post(self, post_id):
         user = self.find()
-        print(f"user like id : {user['_id']}" )
         print(f"user like self : {self.username}")
         print(f"user neo4j : {user}")
 
         mongo_filter = {'username' : self.username }
         mongo_user = self.user_collection.find_one( mongo_filter )
 
-        
+        updated_likes = {"$addToSet":{"likes": self.username }}
+        post_filter = { "_id" : post_id }
+        print(f"Post id : {post_id}")
+        self.post_collection.update( post_filter , updated_likes)
 
-        like_filter = {'Post_blog' : post_id }
+        mongo_post = self.post_collection.find_one( post_filter )
+        print(f"Post liked : {mongo_post}")
+
 
         matcher = NodeMatcher(graph)
         post = matcher.match("Post", id=post_id).first()
         graph.merge(Relationship(user, 'LIKED', post))
-        self.like_collection.insert_one(like_filter)
-
+        
+        """
 
         if self.like_collection.find_one( like_filter ) is not None:
             like_update = {"$addToSet":{"User_blog": mongo_user["_id"]}}
@@ -189,6 +177,7 @@ class User:
 
 
         self.like_collection.insert_one(like_filter)
+        """
 
     def get_recent_posts(self):
         query = '''
@@ -211,6 +200,28 @@ class User:
         ORDER BY SIZE(tags) DESC LIMIT 3
         RETURN they.username AS similar_user, tags
         '''
+        mongo_filter = {'username' : self.username }
+        mongo_user = self.user_collection.find_one( mongo_filter )
+
+        post_filter= {"User_blog" : mongo_user["_id"]}
+        mongo_post = self.post_collection.find( post_filter )
+        user_tags_distinct = mongo_post.distinct("tags")
+        print(f"Found tags : {user_tags_distinct}")
+        users_tagged = []
+        tags_dict = {}
+        for user_tag in user_tags_distinct:
+
+            tag_filter = { "tags": user_tag }
+            mongo_tags = self.post_collection.find( tag_filter )
+            distinct_users = mongo_tags.distinct( "User_blog" )
+            user_name_list = []
+            for distinct_user in distinct_users:
+                user = self.user_collection.find_one( {"_id": distinct_user} )
+                if (user is not None) and (user["username"] != self.username):
+                    user_name_list.append( user["username"] )
+            tags_dict[user_tag] = user_name_list
+        
+        print( f"\nall users dict : {tags_dict } \n")
 
         return graph.run(query, username=self.username)
 

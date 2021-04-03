@@ -89,14 +89,14 @@ def profile(username):
 
     user_being_viewed_username = username
 
-    user_being_viewed = User(user_being_viewed_username,"","")
+    user_being_viewed = User(user_being_viewed_username)
     posts = user_being_viewed.get_recent_posts()
 
     similar = []
     common = []
 
     if logged_in_username:
-        logged_in_user =  User(logged_in_username,"","")
+        logged_in_user =  User(logged_in_username)
 
         if logged_in_user.username == user_being_viewed.username:
             similar = logged_in_user.get_similar_users()
