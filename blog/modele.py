@@ -100,30 +100,56 @@ class User:
         mongo_filter = {'username' : self.username }
         mongo_user = self.user_collection.find_one( mongo_filter )
 
-        insert_post = { '_id' : str(uuid.uuid4()) ,"User_blog":mongo_user["_id"] , 'title': title, 'text': text , 'timestamp': timestamp(), 'date': date()}
-
-        self.post_collection.insert_one( insert_post)
+        
 
         
         
         tags = [x.strip() for x in tags.lower().split(',')]
+        post_id = str(uuid.uuid4())
+        insert_post = { '_id' : post_id ,"User_blog":mongo_user["_id"] , 'title': title, 'text': text , 'timestamp': timestamp(), 'date': date(), "tags":tags}
+
+        self.post_collection.insert_one( insert_post)
+
+        post_filter= {"User_blog" : mongo_user["_id"]}
+        mongo_post = self.post_collection.find( post_filter )
+        user_tags_distinct = mongo_post.distinct("tags")
+        print(f"Found tags : {user_tags_distinct}")
+        users_tagged = []
+        tags_dict = {}
+        for user_tag in user_tags_distinct:
+
+            tag_filter = { "tags": user_tag }
+            mongo_tags = self.post_collection.find( tag_filter )
+            distinct_users = mongo_tags.distinct( "User_blog" )
+            user_name_list = []
+            for distinct_user in distinct_users:
+                user = self.user_collection.find_one( {"_id": distinct_user} )
+                if (user is not None) and (user["username"] != self.username):
+                    user_name_list.append( user["username"] )
+            tags_dict[user_tag] = user_name_list
+        
+        print( f"\nall users dict : {tags_dict } \n")
+
+        #print( f"all users : {users_tagged } \n")
+        #print( f"\nall users dict : {tags_dict } \n")
+
         for tag in set(tags):
-             
+            """ 
             tag_filter = {'name' : tag }
             if self.tag_collection.find_one( tag_filter ) is not None:
-                updated_tag = {"$push":{"User_blog":{"$each": [mongo_user["_id"]]}}}
+                updated_tag = {"$addToSet":{"User_blog": mongo_user["_id"]}}
 
-                user_filter = { "User_blog": { "$all": [mongo_user["_id"]] } }
-                found_user = self.tag_collection.find_one( user_filter )
-                print(f"found user id tag: {found_user}")
-                
-                if found_user is None:
-                    self.tag_collection.update_one( tag_filter, updated_tag)
+                #user_filter = { "User_blog": { "$all": [mongo_user["_id"]] } }
+                #found_user = self.tag_collection.find_one( user_filter )
+                #print(f"found user id tag: {found_user}")
+
+                #if found_user is None:
+                self.tag_collection.update( tag_filter, updated_tag)
 
             else:
                 insert_tag = { '_id' :str(uuid.uuid4()) , "name":tag ,"User_blog":[mongo_user["_id"]]  }
                 self.tag_collection.insert_one( insert_tag )
-
+            """
 
 
             tag = Node('Tag', name=tag)
@@ -135,9 +161,32 @@ class User:
 
     def like_post(self, post_id):
         user = self.find()
+        print(f"user like id : {user['_id']}" )
+        print(f"user like self : {self.username}")
+        print(f"user neo4j : {user}")
+
+        mongo_filter = {'username' : self.username }
+        mongo_user = self.user_collection.find_one( mongo_filter )
+
+        
+
+        like_filter = {'Post_blog' : post_id }
+
         matcher = NodeMatcher(graph)
         post = matcher.match("Post", id=post_id).first()
         graph.merge(Relationship(user, 'LIKED', post))
+
+        if self.like_collection.find_one( like_filter ) is not None:
+            like_update = {"$addToSet":{"User_blog": mongo_user["_id"]}}
+
+            self.tag_collection.update( like_filter , like_update)
+
+        else:
+            insert_tag = { '_id' :str(uuid.uuid4()) , "name":tag ,"User_blog":[mongo_user["_id"]]  }
+            self.tag_collection.insert_one( insert_tag )
+
+
+        self.like_collection.insert_one(like_filter)
 
     def get_recent_posts(self):
         query = '''
