@@ -186,8 +186,22 @@ class User:
         RETURN post, COLLECT(tag.name) AS tags
         ORDER BY post.timestamp DESC LIMIT 5
         '''
+        mongo_filter = {'username' : self.username }
+        mongo_user = self.user_collection.find_one( mongo_filter )
 
+        post_filter= {"User_blog" : mongo_user["_id"]}
+        mongo_post = self.post_collection.find( post_filter )
+        #recent_post = mongo_post.sort({"timestamp" : -1})
+
+        recent_posts = self.post_collection.find(post_filter).sort( [ ("timestamp", -1) ]).limit(5)
+
+        for recent in recent_posts:
+            print(f"\nrecent : {recent}")
+        
         return graph.run(query, username=self.username)
+
+
+
 
     def get_similar_users(self):
         # Find three users who are most similar to the logged-in user
@@ -236,8 +250,36 @@ class User:
         RETURN SIZE((they)-[:LIKED]->(:Post)<-[:PUBLISHED]-(you)) AS likes,
                COLLECT(DISTINCT tag.name) AS tags
         '''
+        mongo_filter = {'username' : self.username }
+        mongo_user = self.user_collection.find_one( mongo_filter )
+        #self.post_collection.remove({ "likes": { "$exists": 0 } })
 
+        user_posts = self.post_collection.find( { "User_blog": mongo_user["_id"] } )
+        count = 0 
+        tag_list = []
+        for post in user_posts:
+            likes = post["likes"]
+            tags = post["tags"]
+            i = 0
+            for like in likes:
+                print(f" like : {like}")
+                if like != self.username:
+                    i = i + 1 
+            
+                    tag_list.extend( tags )
+
+            count = count + i
+
+        tag_list_dictinct = []
+        for tag in tag_list:
+            if tag not in tag_list_dictinct:
+                tag_list_dictinct.append( tag )
+
+        print(f"\ncount : {count}")
+        print(f"\ncommon tags : {tag_list_dictinct}")
         return graph.run(query, they=other.username, you=self.username).next
+
+
 
 def get_todays_recent_posts():
     query = '''
@@ -246,6 +288,12 @@ def get_todays_recent_posts():
     RETURN user.username AS username, post, COLLECT(tag.name) AS tags
     ORDER BY post.timestamp DESC LIMIT 5
     '''
+
+    post_collection = mongo.create_collection(database_name = "mongo_blog" , collection_name = "Post_blog")
+    recent_posts_today = post_collection.find().sort( [ ("timestamp", -1) ]).limit(5)
+
+    for recent in recent_posts_today:
+        print(f"\nrecent post: {recent}")
 
     return graph.run(query, today=date())
 

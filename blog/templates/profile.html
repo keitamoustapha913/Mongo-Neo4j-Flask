@@ -20,15 +20,15 @@
 
     {% else %}
 
-  <p>{{ username }} has liked {{ common.likes }} of your posts and
-      {% if common.tags %}
-      also blogs about <i>{{ ", ".join(common.tags) }}</i>
-      {% else %}
-      hasn't blogged about any of the same tags
-      {% endif %}
-  </p>
+        <p>{{ username }} has liked {{ common.likes }} of your posts and
+            {% if common.tags %}
+            also blogs about <i>{{ ", ".join(common.tags) }}</i>
+            {% else %}
+            hasn't blogged about any of the same tags
+            {% endif %}
+        </p>
 
-  <h3>{{ username }}'s recent posts:</h3>
+        <h3>{{ username }}'s recent posts:</h3>
 
     {% endif %}
 {% endif %}
